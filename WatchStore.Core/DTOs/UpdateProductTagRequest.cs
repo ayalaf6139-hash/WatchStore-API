@@ -1,0 +1,19 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+using System.ComponentModel.DataAnnotations;
+
+namespace WatchStore.Core.DTOs
+{
+    public class UpdateProductTagRequest
+    {
+        [Required]
+        public int ProductId { get; set; }
+
+        [Required]
+        public int TagId { get; set; }
+    }
+}

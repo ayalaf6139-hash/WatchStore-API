@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace WatchStore.Core.Entities
+{
+    public class Category
+    {
+        public int Id { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+
+        public string? Description { get; set; }
+
+        // קטגוריה אחת מכילה מוצרים רבים
+        public ICollection<Product> Products { get; set; }
+            = new List<Product>();
+    }
+}

@@ -1,0 +1,30 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+
+# Test results
+TestResults/
+*.trx
+coverage*.xml
+
+# Logs (NLog writes under bin/, but just in case)
+logs/
+*.log
+
+# Secrets - the JWT key lives in User Secrets, never in the repo
+secrets.json
+appsettings.*.local.json
+*.pfx
+.env
+
+# Node (if the client is ever placed next to the server)
+node_modules/
