@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -156,6 +157,14 @@ try
             .WithExposedHeaders(CorrelationIdMiddleware.HeaderName));
     });
 
+    // מאחורי proxy (Render): ה-TLS מסתיים ב-proxy, והפרוטוקול המקורי מגיע ב-X-Forwarded-Proto
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+
     var app = builder.Build();
 
     // מריץ את כל ה-migrations שעוד לא הורצו (כולל ה-seed),
@@ -170,10 +179,12 @@ try
 
     // סדר ה-pipeline: טיפול בשגיאות ראשון (עוטף את כל השאר),
     // אחריו CorrelationId, ורק אז authentication ואחריו authorization
+    app.UseForwardedHeaders();
     app.UseMiddleware<ExceptionMiddleware>();
     app.UseMiddleware<CorrelationIdMiddleware>();
 
-    if (app.Environment.IsDevelopment())
+    // בפרודקשן Swagger נפתח רק אם Swagger:Enabled=true
+    if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
     {
         app.UseSwagger();
         app.UseSwaggerUI();
