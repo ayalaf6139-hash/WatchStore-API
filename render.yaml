@@ -1,3 +1,9 @@
+databases:
+  - name: watchstore-db
+    plan: free
+    databaseName: watchstore
+    user: watchstore
+
 services:
   - type: web
     name: watchstore-api
@@ -7,7 +13,9 @@ services:
     healthCheckPath: /swagger/index.html
     envVars:
       - key: ConnectionStrings__DefaultConnection
-        sync: false
+        fromDatabase:
+          name: watchstore-db
+          property: connectionString
       - key: Jwt__Key
         generateValue: true
       - key: Cors__AllowedOrigins__0

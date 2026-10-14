@@ -28,8 +28,8 @@ namespace WatchStore.Core.Entities
 
         public DateTime CreatedAt { get; set; }
 
-        // Concurrency token - מתעדכן אוטומטית ע"י SQL Server בכל שינוי בשורה
-        public byte[] RowVersion { get; set; } = default!;
+        // Concurrency token - ממופה לעמודת המערכת xmin של PostgreSQL, שמשתנה בכל עדכון של השורה
+        public uint RowVersion { get; set; }
 
         // קשר many-to-one לקטגוריה
         public Category Category { get; set; } = null!;

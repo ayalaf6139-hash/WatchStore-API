@@ -1,6 +1,6 @@
 # WatchStore API
 
-Web API לניהול עסק סיטונאי לשעונים. בעל העסק (Admin) מנהל את קטלוג השעונים, המלאי, החנויות וההזמנות. חנויות לקוח (Store) נרשמות, צופות בקטלוג ומזמינות שעונים. המערכת בנויה ב-ASP.NET Core 8 בארכיטקטורת ארבע שכבות, מעל SQL Server ו-EF Core, עם JWT,‏ NLog ובדיקות xUnit + Moq.
+Web API לניהול עסק סיטונאי לשעונים. בעל העסק (Admin) מנהל את קטלוג השעונים, המלאי, החנויות וההזמנות. חנויות לקוח (Store) נרשמות, צופות בקטלוג ומזמינות שעונים. המערכת בנויה ב-ASP.NET Core 8 בארכיטקטורת ארבע שכבות, מעל PostgreSQL ו-EF Core, עם JWT,‏ NLog ובדיקות xUnit + Moq.
 
 ## המשאב המוגבל והתחרות עליו
 
@@ -10,9 +10,9 @@ Web API לניהול עסק סיטונאי לשעונים. בעל העסק (Admi
 
 **איך המערכת מגיבה (optimistic concurrency):**
 
-1. ל-`Product` יש `RowVersion` (`rowversion` של SQL Server, מוגדר ב-`ProductConfiguration` עם `IsRowVersion()`). הערך מתעדכן אוטומטית בכל שינוי בשורה.
+1. ל-`Product` יש `RowVersion` (`uint` שממופה לעמודת המערכת `xmin` של PostgreSQL, מוגדר ב-`ProductConfiguration` עם `IsRowVersion()`). הערך מתעדכן אוטומטית בכל שינוי בשורה.
 2. `OrderService.CreateAsync` טוען את המוצרים, בודק מלאי, מוריד אותו ויוצר את ההזמנה. הכול נשמר ב-`SaveChanges` **אחד**, ש-EF Core מריץ בטרנזקציה אחת.
-3. ה-UPDATE של המוצר נשלח עם `WHERE Id = @id AND RowVersion = @original`. אם חנות אחרת הספיקה לשמור לפני כן, אף שורה לא מתעדכנת, EF זורק `DbUpdateConcurrencyException` והטרנזקציה מתבטלת, כך שההזמנה לא נוצרת.
+3. ה-UPDATE של המוצר נשלח עם `WHERE Id = @id AND xmin = @original`. אם חנות אחרת הספיקה לשמור לפני כן, אף שורה לא מתעדכנת, EF זורק `DbUpdateConcurrencyException` והטרנזקציה מתבטלת, כך שההזמנה לא נוצרת.
 4. ה-Repository מתרגם את החריגה ל-`ConcurrencyConflictException` (של ה-Core, כדי שה-Service לא יהיה תלוי ב-EF). ה-Service כותב לוג **Warning** וזורק `ConflictException`.
 5. ה-middleware מחזיר **409 Conflict**:
 
@@ -20,14 +20,14 @@ Web API לניהול עסק סיטונאי לשעונים. בעל העסק (Admi
 { "status": 409, "message": "המלאי של המוצר כבר נתפס על ידי משתמש אחר. אנא נסה שוב.", "correlationId": "..." }
 ```
 
-ההוכחה נמצאת ב-`WatchStore.Tests/Concurrency/ProductConcurrencyTests.cs`: שני `DbContext` נפרדים מול SQL Server אמיתי קוראים את אותו מוצר ושניהם משנים אותו. הראשון שומר, השני מקבל `DbUpdateConcurrencyException`, והמלאי בבסיס הנתונים יורד פעם אחת בלבד.
+ההוכחה נמצאת ב-`WatchStore.Tests/Concurrency/ProductConcurrencyTests.cs`: שני `DbContext` נפרדים מול PostgreSQL אמיתי קוראים את אותו מוצר ושניהם משנים אותו. הראשון שומר, השני מקבל `DbUpdateConcurrencyException`, והמלאי בבסיס הנתונים יורד פעם אחת בלבד.
 
 מלאי שאינו מספיק כבר בזמן הקריאה (למשל מלאי 1 והזמנה של 2) נדחה גם הוא ב-409, עם הודעה שמציינת את הכמות הזמינה.
 
 ## דרישות
 
 - .NET 8 SDK
-- **SQL Server LocalDB** (מגיע עם Visual Studio). Connection string: `Server=(localdb)\MSSQLLocalDB;Database=WatchStoreDb`. אפשר להחליף אותו ב-`appsettings.Development.json` או ב-User Secrets.
+- **PostgreSQL** מקומי. Connection string: `Host=localhost;Port=5432;Database=watchstore;Username=postgres;Password=postgres`. אפשר להחליף אותו ב-`appsettings.Development.json` או ב-User Secrets.
 
 ## הרצה מקומית
 
@@ -41,7 +41,7 @@ dotnet run --project WatchStore.API --launch-profile http
 
 Swagger: http://localhost:5140/swagger. מתחברים דרך `POST /api/auth/login`, מעתיקים את ה-`token`, לוחצים **Authorize** ומדביקים.
 
-בדיקות (כולל בדיקת ה-concurrency, שיוצרת ומוחקת בסיס נתונים זמני ב-LocalDB):
+בדיקות (כולל בדיקת ה-concurrency, שיוצרת ומוחקת בסיס נתונים זמני ב-PostgreSQL. השרת נלקח מ-`WATCHSTORE_TEST_POSTGRES`, וברירת המחדל היא localhost עם postgres/postgres):
 
 ```bash
 dotnet test
@@ -80,7 +80,7 @@ WatchStore.Core     Entities, DTOs, Interfaces, Enums, Exceptions - ללא תל�
 WatchStore.Data     DbContext, Fluent API Configurations, Repositories, Migrations, Seed   -> Core
 WatchStore.Service  Business logic, AutoMapper Profiles, BCrypt                            -> Core
 WatchStore.API      Controllers, Middleware, JWT, Program.cs                               -> Core, Service, Data (רק לרישום DI)
-WatchStore.Tests    xUnit + Moq (Services), SQL Server LocalDB (Concurrency)
+WatchStore.Tests    xUnit + Moq (Services), PostgreSQL (Concurrency)
 ```
 
 - **קשרים:** Store → Orders ו-Category → Products ‏(many-to-one), ‏Product ↔ Tag דרך `ProductTag` ‏(many-to-many). טעינה עם `Include`/`ThenInclude`, בלי N+1: גם המוצרים של הזמנה נטענים בשאילתה אחת (`WHERE Id IN (...)`).
@@ -88,4 +88,4 @@ WatchStore.Tests    xUnit + Moq (Services), SQL Server LocalDB (Concurrency)
 - **מחיקת מוצר היא מחיקה רכה** (`IsActive = false`), כי מוצר שכבר הוזמן חייב להישאר בהיסטוריית ההזמנות.
 - **Middleware:** הסדר ב-pipeline הוא `ExceptionMiddleware` (ראשון) → `CorrelationIdMiddleware` → Authentication → Authorization. ה-CorrelationId חוזר ב-header `X-Correlation-ID` ומופיע בכל שורת לוג.
 - **NLog** (`nlog.config`): הקוד כותב דרך `ILogger` הרגיל, ו-NLog מתחבר מתחת. הלוגים נכתבים ל-`bin/.../logs/`, וקובץ נפרד מרכז Warning ומעלה. לא נרשמים ללוג סיסמאות, tokens או גוף בקשות.
-- **סודות:** `Jwt:Key` נשמר ב-User Secrets. ה-connection string של LocalDB (Windows auth, בלי סיסמה) נמצא ב-`appsettings.Development.json`.
+- **סודות:** `Jwt:Key` נשמר ב-User Secrets. ה-connection string המקומי (משתמש ברירת המחדל של PostgreSQL) נמצא ב-`appsettings.Development.json`. ב-Render הוא מגיע ממסד הנתונים שמוגדר ב-`render.yaml`, בפורמט `postgresql://`, ו-`PostgresConnectionString.Normalize` ממיר אותו לפורמט של Npgsql.

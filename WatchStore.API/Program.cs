@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NLog;
 using NLog.Web;
+using WatchStore.API.Extensions;
 using WatchStore.API.Middleware;
 using WatchStore.API.Security;
 using WatchStore.Core.Interfaces;
@@ -85,10 +86,10 @@ try
     // לכן כל ה-repositories וה-services שתלויים בו גם Scoped -
     // singleton שמחזיק DbContext היה משתף אותו בין בקשות מקבילות (לא thread-safe)
     builder.Services.AddDbContext<WatchStoreDbContext>(options =>
-        options.UseSqlServer(
+        options.UseNpgsql(PostgresConnectionString.Normalize(
             builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
-                "Connection string 'DefaultConnection' is missing.")));
+                "Connection string 'DefaultConnection' is missing."))));
 
     // סורק את פרויקט ה-Service ורושם את כל ה-AutoMapper Profiles
     builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);

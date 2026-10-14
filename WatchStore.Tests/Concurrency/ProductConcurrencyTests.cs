@@ -7,15 +7,17 @@ namespace WatchStore.Tests.Concurrency
 {
     // ההוכחה שה-concurrency token עובד באמת: שני DbContext נפרדים (כמו שתי בקשות HTTP
     // מקבילות) קוראים את אותו מוצר, שניהם משנים אותו, הראשון שומר והשני נכשל.
-    // רץ מול SQL Server LocalDB אמיתי, כי rowversion לא קיים ב-InMemory provider.
+    // רץ מול PostgreSQL אמיתי, כי xmin לא קיים ב-InMemory provider.
+    // השרת נלקח מ-WATCHSTORE_TEST_POSTGRES (ברירת מחדל: localhost עם postgres/postgres).
     // כל הרצה יוצרת בסיס נתונים זמני משלה ומוחקת אותו בסוף
     public class ProductConcurrencyTests : IAsyncLifetime
     {
         private const int RolexId = 1; // ב-seed יש ממנו יחידה אחת בלבד
 
         private readonly string _connectionString =
-            $"Server=(localdb)\\MSSQLLocalDB;Database=WatchStore_ConcurrencyTest_{Guid.NewGuid():N};" +
-            "Trusted_Connection=True;TrustServerCertificate=True;";
+            (Environment.GetEnvironmentVariable("WATCHSTORE_TEST_POSTGRES")
+             ?? "Host=localhost;Port=5432;Username=postgres;Password=postgres") +
+            $";Database=watchstore_concurrency_test_{Guid.NewGuid():N}";
 
         public async Task InitializeAsync()
         {
@@ -49,7 +51,7 @@ namespace WatchStore.Tests.Concurrency
             // הראשונה שומרת בהצלחה, וה-RowVersion בשורה משתנה
             await storeA.SaveChangesAsync();
 
-            // השנייה שולחת UPDATE ... WHERE RowVersion = <הערך הישן> - אף שורה לא מתעדכנת
+            // השנייה שולחת UPDATE ... WHERE xmin = <הערך הישן> - אף שורה לא מתעדכנת
             await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
                 () => storeB.SaveChangesAsync());
 
@@ -86,7 +88,7 @@ namespace WatchStore.Tests.Concurrency
         private WatchStoreDbContext CreateContext()
         {
             var options = new DbContextOptionsBuilder<WatchStoreDbContext>()
-                .UseSqlServer(_connectionString)
+                .UseNpgsql(_connectionString)
                 .Options;
 
             return new WatchStoreDbContext(options);
