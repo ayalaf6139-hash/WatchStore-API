@@ -185,7 +185,8 @@ try
     app.UseMiddleware<CorrelationIdMiddleware>();
 
     // בפרודקשן Swagger נפתח רק אם Swagger:Enabled=true
-    if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
+    var swaggerEnabled = app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled");
+    if (swaggerEnabled)
     {
         app.UseSwagger();
         app.UseSwaggerUI();
@@ -199,6 +200,14 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
+
+    // הכתובת הראשית מפנה ל-Swagger (כשהוא פתוח), ו-/api משמש לבדיקה שהשרת חי
+    if (swaggerEnabled)
+    {
+        app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+    }
+
+    app.MapGet("/api", () => Results.Ok(new { status = "ok" })).ExcludeFromDescription();
 
     app.Run();
 }
