@@ -2,6 +2,15 @@
 
 Web API לניהול עסק סיטונאי לשעונים. בעל העסק (Admin) מנהל את קטלוג השעונים, המלאי, החנויות וההזמנות. חנויות לקוח (Store) נרשמות, צופות בקטלוג ומזמינות שעונים. המערכת בנויה ב-ASP.NET Core 8 בארכיטקטורת ארבע שכבות, מעל PostgreSQL ו-EF Core, עם JWT,‏ NLog ובדיקות xUnit + Moq.
 
+## כתובת השרת
+
+השרת פרוס ב-Render: https://watchstore-api-uuls.onrender.com
+
+- Swagger: https://watchstore-api-uuls.onrender.com/swagger
+- כתובת בסיס ל-API: `https://watchstore-api-uuls.onrender.com/api`
+
+בכתובת הראשית (`/`) אין דף, ולכן היא מחזירה 404. בתוכנית החינמית של Render השרת נרדם אחרי כ-15 דקות בלי פעילות, והבקשה הראשונה אחרי זה יכולה לקחת 30 עד 60 שניות.
+
 ## המשאב המוגבל והתחרות עליו
 
 **המשאב המוגבל הוא המלאי של שעון מסוים** (`Product.StockQuantity`). ב-seed יש לדגם `ROLEX-001` יחידה אחת בלבד.
