@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "watchflow-*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DOTNET_NOLOGO: true
+      WATCHSTORE_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=watchstore_ci;Username=postgres;Password=postgres
+      Jwt__Key: ci-only-signing-key-not-a-secret-0123456789
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore WatchStore.sln
+
+      - name: Build
+        run: dotnet build WatchStore.sln -c Release --no-restore
+
+      - name: Test
+        run: >-
+          dotnet test WatchStore.sln -c Release --no-build
+          --logger "trx;LogFileName=results.trx"
+          --logger "console;verbosity=normal"
+          --results-directory TestResults
+
+      - name: Report test results
+        if: always()
+        run: python3 .github/scripts/report_tests.py TestResults
+
+      - name: Check migrations match the model
+        if: always()
+        run: |
+          dotnet tool install --global dotnet-ef --version 8.0.20
+          dotnet ef migrations has-pending-model-changes --project WatchStore.Data --startup-project WatchStore.API --configuration Release

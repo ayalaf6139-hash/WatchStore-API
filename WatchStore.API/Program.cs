@@ -13,6 +13,7 @@ using WatchStore.API.Middleware;
 using WatchStore.API.Security;
 using WatchStore.Core.Interfaces;
 using WatchStore.Data.Context;
+using WatchStore.Data.Interceptors;
 using WatchStore.Data.Repositories;
 using WatchStore.Service.Profiles;
 using WatchStore.Service.Security;
@@ -85,11 +86,18 @@ try
     // DbContext הוא Scoped (ברירת המחדל): מופע אחד לכל בקשה.
     // לכן כל ה-repositories וה-services שתלויים בו גם Scoped -
     // singleton שמחזיק DbContext היה משתף אותו בין בקשות מקבילות (לא thread-safe)
-    builder.Services.AddDbContext<WatchStoreDbContext>(options =>
-        options.UseNpgsql(PostgresConnectionString.Normalize(
-            builder.Configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException(
-                "Connection string 'DefaultConnection' is missing."))));
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddScoped<ICurrentActor, HttpContextCurrentActor>();
+    builder.Services.AddScoped<AuditInterceptor>();
+
+    builder.Services.AddDbContext<WatchStoreDbContext>((serviceProvider, options) =>
+        options
+            .UseNpgsql(PostgresConnectionString.Normalize(
+                builder.Configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException(
+                    "Connection string 'DefaultConnection' is missing.")))
+            .AddInterceptors(serviceProvider.GetRequiredService<AuditInterceptor>()));
 
     // סורק את פרויקט ה-Service ורושם את כל ה-AutoMapper Profiles
     builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
@@ -100,6 +108,10 @@ try
     builder.Services.AddScoped<IOrderRepository, OrderRepository>();
     builder.Services.AddScoped<ITagRepository, TagRepository>();
     builder.Services.AddScoped<IUserRepository, UserRepository>();
+    builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+    builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+    builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
+    builder.Services.AddScoped<IBusinessSettingsRepository, BusinessSettingsRepository>();
 
     builder.Services.AddScoped<IProductService, ProductService>();
     builder.Services.AddScoped<ICategoryService, CategoryService>();
