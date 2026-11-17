@@ -1,4 +1,5 @@
 using WatchStore.Core.Entities;
+using WatchStore.Core.Enums;
 
 namespace WatchStore.Core.Interfaces
 {
@@ -6,6 +7,19 @@ namespace WatchStore.Core.Interfaces
     {
         Task<Appointment?> GetByIdAsync(
             int id,
+            CancellationToken cancellationToken = default);
+
+        Task<Appointment?> GetByIdWithDetailsAsync(
+            int id,
+            CancellationToken cancellationToken = default);
+
+        Task<(List<Appointment> Items, int TotalCount)> GetPagedAsync(
+            int businessId,
+            DateTime? fromUtc,
+            DateTime? toUtc,
+            AppointmentStatus? status,
+            int page,
+            int pageSize,
             CancellationToken cancellationToken = default);
 
         Task<Appointment?> GetByIdempotencyKeyAsync(

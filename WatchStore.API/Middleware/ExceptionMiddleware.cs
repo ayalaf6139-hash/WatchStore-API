@@ -39,6 +39,9 @@ namespace WatchStore.API.Middleware
                 BusinessRuleException => (StatusCodes.Status400BadRequest, ex.Message),
                 ForbiddenException => (StatusCodes.Status403Forbidden, ex.Message),
                 ConflictException => (StatusCodes.Status409Conflict, ex.Message),
+                ConcurrencyConflictException => (StatusCodes.Status409Conflict, "הנתונים עודכנו על ידי משתמש אחר. אנא רענן ונסה שוב."),
+                AppointmentSlotConflictException => (StatusCodes.Status409Conflict, "השעה שנבחרה כבר אינה פנויה."),
+                DuplicateKeyException => (StatusCodes.Status409Conflict, "רשומה עם אותם פרטים כבר קיימת."),
                 OperationCanceledException when context.RequestAborted.IsCancellationRequested
                     => (499, "הבקשה בוטלה."),
                 _ => (StatusCodes.Status500InternalServerError, "אירעה שגיאה בלתי צפויה")
@@ -71,6 +74,19 @@ namespace WatchStore.API.Middleware
             context.Response.Clear();
             context.Response.StatusCode = status;
             context.Response.ContentType = "application/json";
+
+            if (ex is SlotUnavailableException slotUnavailable)
+            {
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    status,
+                    message,
+                    correlationId,
+                    alternatives = slotUnavailable.Alternatives
+                });
+
+                return;
+            }
 
             await context.Response.WriteAsJsonAsync(new
             {

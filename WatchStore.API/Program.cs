@@ -11,6 +11,7 @@ using NLog.Web;
 using WatchStore.API.Extensions;
 using WatchStore.API.Middleware;
 using WatchStore.API.Security;
+using WatchStore.Core.Common;
 using WatchStore.Core.Interfaces;
 using WatchStore.Data.Context;
 using WatchStore.Data.Interceptors;
@@ -119,6 +120,13 @@ try
     builder.Services.AddScoped<IOrderService, OrderService>();
     builder.Services.AddScoped<ITagService, TagService>();
     builder.Services.AddScoped<IAuthService, AuthService>();
+    builder.Services.AddScoped<ICustomerService, CustomerService>();
+    builder.Services.AddScoped<ISchedulingService, SchedulingService>();
+    builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+
+    builder.Services.AddSingleton(
+        builder.Configuration.GetSection(WatchFlowSettings.SectionName).Get<WatchFlowSettings>()
+        ?? new WatchFlowSettings());
 
     // ללא state - בטוח כ-singleton
     builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();

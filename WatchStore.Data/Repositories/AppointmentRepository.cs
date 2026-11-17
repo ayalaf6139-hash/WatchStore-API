@@ -24,6 +24,52 @@ namespace WatchStore.Data.Repositories
                 .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
         }
 
+        public async Task<Appointment?> GetByIdWithDetailsAsync(
+            int id,
+            CancellationToken cancellationToken = default)
+        {
+            return await _context.Appointments
+                .AsNoTracking()
+                .Include(a => a.Customer)
+                .Include(a => a.AppointmentType)
+                .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+        }
+
+        public async Task<(List<Appointment> Items, int TotalCount)> GetPagedAsync(
+            int businessId,
+            DateTime? fromUtc,
+            DateTime? toUtc,
+            AppointmentStatus? status,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            IQueryable<Appointment> appointments = _context.Appointments
+                .AsNoTracking()
+                .Where(a => a.BusinessId == businessId);
+
+            if (fromUtc.HasValue)
+                appointments = appointments.Where(a => a.StartUtc >= fromUtc.Value);
+
+            if (toUtc.HasValue)
+                appointments = appointments.Where(a => a.StartUtc < toUtc.Value);
+
+            if (status.HasValue)
+                appointments = appointments.Where(a => a.Status == status.Value);
+
+            var totalCount = await appointments.CountAsync(cancellationToken);
+
+            var items = await appointments
+                .Include(a => a.Customer)
+                .Include(a => a.AppointmentType)
+                .OrderBy(a => a.StartUtc)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
+        }
+
         public async Task<Appointment?> GetByIdempotencyKeyAsync(
             int businessId,
             string idempotencyKey,
