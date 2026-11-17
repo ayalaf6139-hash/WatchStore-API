@@ -62,3 +62,23 @@ jobs:
         run: |
           dotnet tool install --global dotnet-ef --version 8.0.20
           dotnet ef migrations has-pending-model-changes --project WatchStore.Data --startup-project WatchStore.API --configuration Release
+
+  ai-service:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ai-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -r requirements-dev.txt
+
+      - name: Test
+        run: python -m pytest -v
