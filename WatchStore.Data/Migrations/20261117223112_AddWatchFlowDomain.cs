@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using WatchStore.Data.Context;
 
 #nullable disable
 
@@ -628,11 +629,15 @@ namespace WatchStore.Data.Migrations
                 name: "IX_OpeningHours_BusinessId_DayOfWeek",
                 table: "OpeningHours",
                 columns: new[] { "BusinessId", "DayOfWeek" });
+
+            migrationBuilder.Sql(AppointmentOverlapConstraint.CreateSql);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql(AppointmentOverlapConstraint.DropSql);
+
             migrationBuilder.DropTable(
                 name: "AgentActions");
 

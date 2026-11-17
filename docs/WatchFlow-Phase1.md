@@ -43,31 +43,26 @@ erDiagram
 | טלפונים | `PhoneNumber.TryNormalize` ל-E.164 | זיהוי לקוח לפי טלפון חייב פורמט אחד |
 | כמה עסקים | `BusinessId` בטבלאות החדשות בלבד | הכנה להרחבה בלי לשבור את WatchStore |
 
-## יצירת ה-Migration
+## Migration
 
-```bash
-dotnet tool install --global dotnet-ef --version 8.0.20
-dotnet ef migrations add AddWatchFlowDomain --project WatchStore.Data --startup-project WatchStore.API
-```
+`WatchStore.Data/Migrations/20261117223112_AddWatchFlowDomain.cs` נוצר עם `dotnet ef`, ונוספו לו ידנית שתי שורות:
+`migrationBuilder.Sql(AppointmentOverlapConstraint.CreateSql)` בסוף `Up` ו-`migrationBuilder.Sql(AppointmentOverlapConstraint.DropSql)` בתחילת `Down`,
+כי EF לא יודע לייצר exclusion constraint בעצמו.
 
-בקובץ שנוצר `WatchStore.Data/Migrations/<timestamp>_AddWatchFlowDomain.cs`:
+הרצה מקומית: `dotnet build` ואחריו `dotnet test`. העלאת השרת מחילה את ה-migration אוטומטית.
 
-1. בראש הקובץ: `using WatchStore.Data.Context;`
-2. השורה האחרונה בתוך `Up`: `migrationBuilder.Sql(AppointmentOverlapConstraint.CreateSql);`
-3. השורה הראשונה בתוך `Down`: `migrationBuilder.Sql(AppointmentOverlapConstraint.DropSql);`
+## CI
 
-```bash
-dotnet build
-dotnet test
-```
+`.github/workflows/ci.yml` רץ בכל push ל-`main` ול-`watchflow-*`: build, בדיקות מול PostgreSQL 16, ובדיקה שה-migrations תואמים למודל.
+התוצאות בטאב Actions, כולל טבלת סיכום של הבדיקות.
 
 ## סטטוס
 
 | רכיב | מצב |
 |---|---|
 | Entities, Enums, Configurations, Repositories, Seed, Audit | מומש |
-| Exclusion constraint | מומש ונבדק ב-SQL מול PostgreSQL 16 |
-| Migration | לא נוצר עדיין (נדרש `dotnet ef`) |
-| בדיקות xUnit | נכתבו, טרם הורצו |
+| Exclusion constraint | מומש, נבדק ב-SQL ובבדיקות xUnit ב-CI |
+| Migration | נוצר (`AddWatchFlowDomain`) |
+| בדיקות xUnit | רצות ב-GitHub Actions |
 | DTOs ו-Endpoints | שלב 2, יחד עם ה-use cases |
 | בדיקת שעות פעילות וחסימות בזמן הזמנה | שלב 2 (Scheduling engine) |
